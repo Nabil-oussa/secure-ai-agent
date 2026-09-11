@@ -1,0 +1,21 @@
+roles:
+  file-reader:
+    read_file:
+      - /tmp/agent-data
+      - /tmp/public
+
+  file-admin:
+    read_file:
+      - /tmp/agent-data
+      - /tmp/public
+
+    delete_file:
+      - /tmp/agent-data
+
+rules:
+  actions:
+    delete_file:
+      require:
+        environment: development
+        department: security
+        risk_level: low
