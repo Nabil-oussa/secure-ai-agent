@@ -1,5 +1,5 @@
 # Secure AI Agent — IAM, RBAC, ABAC & Policy Enforcement
-
+[![CI](https://github.com/Nabil-oussa/secure-ai-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/Nabil-oussa/secure-ai-agent/actions/workflows/ci.yml)
 A practical security laboratory exploring how to secure AI agents that interact with protected resources.
 
 This project is built with **Python** and **smolagents** and progressively introduces security controls around an AI agent, from basic tool protection to externalized policy enforcement.
