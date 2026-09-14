@@ -1,54 +1,39 @@
 # Secure AI Agent — IAM, RBAC, ABAC & Policy Enforcement
 
-A practical security lab exploring how to secure AI agents that can interact with protected resources.
+A practical security laboratory exploring how to secure AI agents that interact with protected resources.
 
-This project is built with **Python** and **smolagents** and progressively introduces security controls around an AI agent:
+This project is built with **Python** and **smolagents** and progressively introduces security controls around an AI agent, from basic tool protection to externalized policy enforcement.
 
-```text
-LLM
- ↓
-CodeAgent
- ↓
-Tool
- ↓
-SecurityContext
- ↓
-PolicyEngine
- ↓
-policy.yaml
- ↓
-ALLOW / DENY
- ↓
-Protected Resource
-```
+The project focuses on a fundamental security principle:
+
+> **The LLM proposes. The agent orchestrates. The tool executes. The policy authorizes or denies.**
+
+The LLM is **not** trusted as an authority for identity or authorization.
+
+---
 
 ## 🎯 Objectives
 
-The goal is to understand how security mechanisms can be integrated into an AI agent architecture.
+The goal is to understand how traditional security principles can be applied to modern AI agent architectures.
 
-The project progressively implements:
+The project progressively introduces:
 
 * Tool-level security
 * Path traversal protection
 * RBAC — Role-Based Access Control
 * Resource-based authorization
-* Security audit logs
+* Security audit logging
 * ABAC — Attribute-Based Access Control
 * Externalized security policies
-* Security Context
-* Trusted Runtime
-
-The central security principle is:
-
-> **The LLM proposes. The agent orchestrates. The tool executes. The policy authorizes or denies.**
-
-The LLM must never be trusted as the authority for identity or authorization.
+* Security contexts
+* Trusted runtime concepts
+* Least-privilege authorization
 
 ---
 
 ## 🏗️ Architecture
 
-The final architecture separates intelligence, execution and authorization:
+The final architecture separates **intelligence**, **execution**, and **authorization**:
 
 ```text
                     ┌──────────────┐
@@ -56,6 +41,7 @@ The final architecture separates intelligence, execution and authorization:
                     │   Qwen etc.  │
                     └──────┬───────┘
                            │
+                           │ proposes action
                            ▼
                     ┌──────────────┐
                     │  CodeAgent   │
@@ -97,7 +83,7 @@ The final architecture separates intelligence, execution and authorization:
 
 ## 🔐 Security Model
 
-Authorization is based on:
+Authorization is based on four security dimensions:
 
 ```text
 Identity + Action + Resource + Attributes
@@ -121,15 +107,19 @@ Example security context:
 }
 ```
 
-The identity is supplied by the trusted runtime and is not selected by the LLM.
+The identity and security attributes are supplied by the runtime.
+
+They must not be selected or modified by the LLM.
 
 ---
 
 ## 📚 Learning Progression
 
+The repository intentionally shows the evolution of the security architecture.
+
 ### 01 — Basic Agent
 
-`01_basic_agent.py`
+**`basic_agent.py`**
 
 Introduces a protected `read_file` tool.
 
@@ -141,15 +131,15 @@ Path normalization is performed before authorization:
 Path(path).expanduser().resolve()
 ```
 
-This protects against path traversal and similar-path bypasses.
+This prevents path traversal and similar-path bypasses.
 
 ---
 
 ### 02 — RBAC
 
-`02_rbac.py`
+**`rbac.py`**
 
-Introduces identities and permissions.
+Introduces identities and role-based permissions.
 
 Example:
 
@@ -166,9 +156,19 @@ Authorization becomes dependent on the identity of the agent.
 
 ---
 
-### 03 — RBAC + Audit
+### 03 — RBAC + Identity
 
-`03_rbac_audit.py`
+**`rbac_identity.py`**
+
+Introduces an explicit agent identity and separates the identity from the authorization logic.
+
+This step demonstrates why authorization decisions should be based on a security identity rather than on the requested operation alone.
+
+---
+
+### 04 — RBAC + Audit
+
+**`rbac_audit.py`**
 
 Introduces security audit logs.
 
@@ -182,17 +182,15 @@ resource=/tmp/agent-data/test.txt
 decision=DENY
 ```
 
-Every authorization decision can therefore be traced.
+Authorization decisions can therefore be traced and investigated.
 
 ---
 
-### 04 — Resource Authorization
+### 05 — Resource Authorization
 
-`04_rbac_resources.py`
+**`rbac_resources.py`**
 
-Authorization is no longer limited to the action.
-
-It also considers the protected resource.
+Authorization is extended to include the protected resource.
 
 For example:
 
@@ -207,15 +205,15 @@ file-admin
  └── delete_file → /tmp/agent-data
 ```
 
-This implements a basic least-privilege model.
+This introduces resource-level least privilege.
 
 ---
 
-### 05 — ABAC
+### 06 — ABAC
 
-`05_abac.py`
+**`abac.py`**
 
-Authorization is extended with attributes.
+Authorization is extended with contextual attributes.
 
 The decision becomes:
 
@@ -239,13 +237,13 @@ department: security
 risk_level: low
 ```
 
-A `file-admin` may therefore have the required permission but still be denied if the contextual attributes do not satisfy the policy.
+A `file-admin` may have permission to perform an operation but still be denied if the contextual attributes do not satisfy the security policy.
 
 ---
 
-### 06 — External Policy
+### 07 — External Policy Enforcement
 
-`06_external_policy.py`
+**`external_policy.py`**
 
 The authorization policy is externalized into:
 
@@ -255,7 +253,7 @@ policy.yaml
 
 The application no longer contains the complete authorization policy.
 
-This creates a clearer separation:
+This creates a clear separation:
 
 ```text
 Application
@@ -266,6 +264,8 @@ PolicyEngine
      ▼
 policy.yaml
 ```
+
+This approach is closer to a **Policy-as-Code** architecture.
 
 ---
 
@@ -280,15 +280,15 @@ class SecurityContext:
         self.attributes = attributes
 ```
 
-This separates security information from the tools themselves.
+The security context separates identity and authorization attributes from the implementation of individual tools.
 
-The tools consume the security context but do not define their own authorization policy.
+Tools consume the security context but do not define their own security identity.
 
 ---
 
 ## 🔑 Trusted Runtime
 
-The runtime is responsible for creating the security context:
+The runtime is responsible for providing the security context:
 
 ```text
 Trusted Runtime
@@ -300,7 +300,7 @@ SecurityContext
 Agent / Tools
 ```
 
-This is an important security boundary.
+This represents an important security boundary.
 
 The agent must not be able to arbitrarily change:
 
@@ -314,13 +314,21 @@ into:
 identity = file-admin
 ```
 
-Simply asking the LLM to "act as an administrator" must never grant additional privileges.
+Simply asking the LLM to:
+
+> "Act as an administrator"
+
+must never grant additional privileges.
+
+> **Authentication and authorization must remain outside the control of the LLM.**
+
+The current implementation is a pedagogical simulation of a trusted runtime. A production implementation would typically obtain identity from an external identity provider or workload identity mechanism.
 
 ---
 
 ## 🧪 Security Tests
 
-The project includes tests covering:
+The project includes automated tests covering:
 
 * Authorized file access
 * Unauthorized file access
@@ -336,28 +344,56 @@ The project includes tests covering:
 * Unauthorized deletion
 * Resource boundary enforcement
 
-Example:
+The current test suite contains **15 tests**.
 
-```python
-assert not policy_engine.is_allowed(
-    "file-reader",
-    "delete_file",
-    "/tmp/agent-data/test.txt",
-    {
-        "environment": "development",
-        "department": "security",
-        "risk_level": "low",
-    },
-)
+Run the complete test suite with:
+
+```bash
+PYTHONPATH=. ./venv/bin/pytest -q
+```
+
+Expected result:
+
+```text
+15 passed
+```
+
+---
+
+## 📁 Project Structure
+
+```text
+secure-ai-agent/
+│
+├── README.md
+├── .gitignore
+├── requirements.txt
+│
+├── basic_agent.py
+├── rbac.py
+├── rbac_identity.py
+├── rbac_audit.py
+├── rbac_resources.py
+├── abac.py
+├── external_policy.py
+│
+├── policy.yaml
+├── policy_engine.py
+├── security_context.py
+├── runtime.py
+│
+└── tests/
+    ├── test_policy_engine.py
+    └── test_tools.py
 ```
 
 ---
 
 ## 🧰 Technologies
 
-* Python
-* smolagents
-* Hugging Face Inference API
+* Python 3.12+
+* [smolagents](https://github.com/huggingface/smolagents)
+* Hugging Face Inference
 * Qwen
 * pytest
 * YAML
@@ -369,54 +405,194 @@ assert not policy_engine.is_allowed(
 
 ---
 
-## 🚀 Running the Tests
+## 🚀 Installation
 
-Create the virtual environment and install the dependencies.
-
-Then run:
+Clone the repository:
 
 ```bash
-pytest -v
+git clone https://github.com/Nabil-oussa/secure-ai-agent.git
+cd secure-ai-agent
 ```
 
-For the direct tool tests:
+Create a virtual environment:
 
 ```bash
-python test_tools.py
+python3 -m venv venv
+source venv/bin/activate
 ```
 
-The LLM-based agent can be launched with:
+Install the dependencies:
 
 ```bash
-python 06_external_policy.py
+pip install -r requirements.txt
 ```
-
-> LLM inference requires an available Hugging Face inference provider and valid credentials where required.
 
 ---
 
-## 🔭 Future Improvements
+## 🧪 Running the Tests
 
-Possible next steps:
+Run the complete test suite:
+
+```bash
+PYTHONPATH=. pytest -q
+```
+
+Or, when using the project's virtual environment directly:
+
+```bash
+PYTHONPATH=. ./venv/bin/pytest -q
+```
+
+Run the tool-level test manually:
+
+```bash
+PYTHONPATH=. python tests/test_tools.py
+```
+
+---
+
+## 🤖 Running the Agent
+
+The final implementation is available in:
+
+```text
+external_policy.py
+```
+
+The agent can be launched with:
+
+```bash
+python external_policy.py
+```
+
+The LLM-based execution requires an available Hugging Face inference provider and the appropriate credentials or access configuration.
+
+> The automated security tests do not require LLM inference.
+
+This distinction is intentional: **authorization logic should remain testable independently of the LLM.**
+
+---
+
+## 🔒 Security Principles Demonstrated
+
+The project demonstrates several core security principles:
+
+### Least Privilege
+
+Agents receive only the permissions required for their role and resource scope.
+
+### Defense in Depth
+
+Security is enforced at multiple levels:
+
+```text
+Tool
+ ↓
+Path validation
+ ↓
+Identity
+ ↓
+Action
+ ↓
+Resource
+ ↓
+Attributes
+ ↓
+Policy
+```
+
+### Separation of Duties
+
+The LLM is responsible for reasoning and proposing actions.
+
+The policy layer is responsible for authorization.
+
+The tool is responsible for executing the authorized operation.
+
+### Fail Closed
+
+If an identity, action, resource, or required attribute does not satisfy the policy, the operation is denied.
+
+### Auditability
+
+Authorization decisions are logged with:
+
+```text
+identity
+action
+resource
+attributes
+decision
+```
+
+---
+
+## ⚠️ Current Limitations
+
+This project is an educational security laboratory and should not be considered a production-ready authorization framework.
+
+Current limitations include:
+
+* The trusted runtime is simulated locally.
+* Identity is currently configured by the runtime rather than obtained from a real Identity Provider.
+* The policy engine is intentionally lightweight.
+* Audit logs are currently written to stdout.
+* No persistent audit backend is implemented.
+* No cryptographic identity verification is implemented.
+* No real OAuth2/OIDC or workload identity integration exists yet.
+* LLM inference depends on an external inference provider.
+
+These limitations are intentional and define the next stages of the project.
+
+---
+
+## 🔭 Roadmap
+
+Possible future improvements include:
+
+### Identity & IAM
 
 * Trusted Identity Provider
 * JWT-based identity
 * OAuth2 / OIDC
 * Short-lived credentials
+* Workload identity
+* Service-to-service authorization
+
+### Policy & Authorization
+
 * Policy versioning
 * Policy decision logging
 * Policy-as-Code
 * Open Policy Agent (OPA)
-* Kubernetes service identities
-* Tool-level rate limiting
 * Risk-based authorization
-* Human-in-the-loop approval
+* Dynamic policy evaluation
+
+### AI Security
+
 * Prompt injection resistance
+* Tool poisoning protection
+* Tool-level rate limiting
+* Human-in-the-loop approval
 * Agent-to-agent authorization
 * MCP security
+* Agent identity
+* Agent capability control
+
+### Cloud Security
+
+* Kubernetes service identities
+* Cloud IAM integration
+* Secrets management
 * KMS integration
-* PKI / mTLS
+
+### Cryptography
+
+* PKI
+* mTLS
+* Certificate lifecycle management
 * Post-Quantum Cryptography
+* Hybrid classical/PQC authentication
 
 ---
 
@@ -424,6 +600,28 @@ Possible next steps:
 
 This project is part of a practical learning path toward:
 
-**Agentic AI Security → IAM → PKI → KMS → Cloud Security → Post-Quantum Cryptography**
+```text
+Agentic AI Security
+        ↓
+       IAM
+        ↓
+       PKI
+        ↓
+       KMS
+        ↓
+ Cloud Security
+        ↓
+Post-Quantum Cryptography
+```
 
 The main objective is to understand how traditional security principles such as **least privilege, identity, authorization, policy enforcement and auditability** can be applied to modern AI agent architectures.
+
+---
+
+## 📌 Status
+
+**Educational / Experimental**
+
+The project is actively evolving as a practical laboratory for:
+
+**AI Security · IAM · Policy Enforcement · QA · Cloud Security · PKI · KMS · Post-Quantum Cryptography**
